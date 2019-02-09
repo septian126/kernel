@@ -9430,11 +9430,6 @@ QDF_STATUS csr_roam_save_connected_infomation(tpAniSirGlobal pMac,
 							    proxy_arp_service;
 		}
 
-		if (pIesTemp->Country.present)
-			qdf_mem_copy(pConnectProfile->countryCode,
-				     pIesTemp->Country.country,
-				     WNI_CFG_COUNTRY_CODE_LEN);
-
 		if (NULL == pIes)
 			/* Free memory if it allocated locally */
 			qdf_mem_free(pIesTemp);
@@ -15820,10 +15815,14 @@ QDF_STATUS csr_send_join_req_msg(tpAniSirGlobal pMac, uint32_t sessionId,
 	}
 	neigh_roam_info = &pMac->roam.neighborRoamInfo[sessionId];
 	if ((eWNI_SME_REASSOC_REQ == messageType) ||
-	    CDS_IS_CHANNEL_5GHZ(pBssDescription->channelId)) {
+		CDS_IS_CHANNEL_5GHZ(pBssDescription->channelId) ||
+		(abs(pBssDescription->rssi) <
+		 (neigh_roam_info->cfgParams.neighborLookupThreshold -
+		  neigh_roam_info->cfgParams.hi_rssi_scan_rssi_delta))) {
 		pSession->disable_hi_rssi = true;
-		sme_debug("Disabling HI_RSSI, AP channel=%d, rssi=%d",
-			  pBssDescription->channelId, pBssDescription->rssi);
+		sme_debug(
+			"Disabling HI_RSSI feature, AP channel=%d, rssi=%d",
+			pBssDescription->channelId, pBssDescription->rssi);
 	} else {
 		pSession->disable_hi_rssi = false;
 	}
@@ -22731,17 +22730,8 @@ static QDF_STATUS csr_process_roam_sync_callback(tpAniSirGlobal mac_ctx,
 		cds_set_connection_in_progress(false);
 		session->roam_synch_in_progress = false;
 		cds_check_concurrent_intf_and_restart_sap(session->pContext);
-
-		if (CDS_IS_CHANNEL_5GHZ(bss_desc->channelId)) {
-			session->disable_hi_rssi = true;
-			sme_debug("Disabling HI_RSSI, AP channel=%d, rssi=%d",
-				  bss_desc->channelId, bss_desc->rssi);
-		} else {
-			session->disable_hi_rssi = false;
-		}
-
 		csr_roam_offload_scan(mac_ctx, session_id,
-				ROAM_SCAN_OFFLOAD_UPDATE_CFG,
+				ROAM_SCAN_OFFLOAD_START,
 				REASON_CONNECT);
 		return status;
 	default:

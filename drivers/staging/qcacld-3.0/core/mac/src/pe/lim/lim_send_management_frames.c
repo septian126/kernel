@@ -4183,7 +4183,8 @@ tSirRetStatus
 lim_send_radio_measure_report_action_frame(tpAniSirGlobal pMac,
 				uint8_t dialog_token,
 				uint8_t num_report,
-				bool is_last_frame,
+				struct rrm_beacon_report_last_beacon_params
+				*last_beacon_report_params,
 				tpSirMacRadioMeasureReport pRRMReport,
 				tSirMacAddr peer,
 				tpPESession psessionEntry)
@@ -4197,7 +4198,6 @@ lim_send_radio_measure_report_action_frame(tpAniSirGlobal pMac,
 	uint8_t i;
 	uint8_t txFlag = 0;
 	uint8_t smeSessionId = 0;
-	bool is_last_report = false;
 
 	tDot11fRadioMeasurementReport *frm =
 		qdf_mem_malloc(sizeof(tDot11fRadioMeasurementReport));
@@ -4214,8 +4214,8 @@ lim_send_radio_measure_report_action_frame(tpAniSirGlobal pMac,
 
 	smeSessionId = psessionEntry->smeSessionId;
 
-	pe_debug("dialog_token %d num_report %d is_last_frame %d",
-		 dialog_token, num_report, is_last_frame);
+	pe_debug("dialog_token %d num_report %d",
+			dialog_token, num_report);
 
 	frm->Category.category = SIR_MAC_ACTION_RRM;
 	frm->Action.action = SIR_MAC_RRM_RADIO_MEASURE_RPT;
@@ -4232,19 +4232,11 @@ lim_send_radio_measure_report_action_frame(tpAniSirGlobal pMac,
 		frm->MeasurementReport[i].late = 0;     /* IEEE 802.11k section 7.3.22. (always zero in rrm) */
 		switch (pRRMReport[i].type) {
 		case SIR_MAC_RRM_BEACON_TYPE:
-			/*
-			 * Last beacon report indication needs to be set to 1
-			 * only for the last report in the last frame
-			 */
-			if (is_last_frame &&
-			    (i == (frm->num_MeasurementReport - 1)))
-				is_last_report = true;
-
 			populate_dot11f_beacon_report(pMac,
 						     &frm->MeasurementReport[i],
 						     &pRRMReport[i].report.
 						     beaconReport,
-						     is_last_report);
+						     last_beacon_report_params);
 			frm->MeasurementReport[i].incapable =
 				pRRMReport[i].incapable;
 			frm->MeasurementReport[i].refused =
